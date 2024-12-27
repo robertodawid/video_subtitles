@@ -5,7 +5,12 @@ from openai import OpenAI
 from moviepy import *
 import math
 from pathlib import Path
+import time
 
+# %%
+# Global variable to track API calls and enforce rate limits
+api_call_counter = 0
+start_time = time.time()
 
 # %%
 """ Reading key from openai"""
@@ -43,11 +48,29 @@ def split_audio(audio_path, chunk_duration_ms=60000):  # 60 seconds per chunk
 # %%
 """ Step 3: Transcribe_audio"""
 def transcribe_audio(audio_path):
-    with open(path, "rb") as audio_file:
-        transcription = client.audio.transcriptions.create(
-        model = "whisper-1", 
-        file = path)
-    return transcription
+    global api_call_counter, start_time
+
+    # Rate-limiting logic: Enforce 3 requests per minute
+    if api_call_counter >= 3:
+        elapsed_time = time.time() - start_time
+        if elapsed_time < 60:  # Less than a minute has passed
+            time_to_wait = 60 - elapsed_time
+            print(f"Rate limit reached. Waiting for {time_to_wait:.2f} seconds...")
+            time.sleep(time_to_wait)
+
+        # Reset counter and timer after 1 minute
+        api_call_counter = 0
+        start_time = time.time()
+    try:
+        with open(audio_path, "rb") as audio_file:
+            transcription = client.audio.transcriptions.create(
+            model = "whisper-1", 
+            file = audio_file)
+        api_call_counter += 1 #increment the counter after a call
+        return transcription
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
         
 # %%
 """ Step 4: Generate SRT subtitles (for each chunk) """
