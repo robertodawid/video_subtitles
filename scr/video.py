@@ -1,9 +1,9 @@
 # %%
 #import whisper
+from openai import OpenAi
 from moviepy import *
-import speech_recognition as sr
-from pydub import *
 import math
+
 
 # %%
 # Step 1: Extract audio from the video
