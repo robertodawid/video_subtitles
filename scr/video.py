@@ -1,19 +1,30 @@
 # %%
 #import whisper
-from openai import OpenAi
+import openai
+from openai import OpenAI
 from moviepy import *
 import math
+from pathlib import Path
 
 
 # %%
-# Step 1: Extract audio from the video
+""" Reading key from openai"""
+with open("././openai_key.txt", "r") as file:
+    key = file.read()
+
+# %%
+openai.api_key = key
+client = OpenAI(api_key = key)
+
+# %%
+""" Step 1: Extract audio from the video """
 def extract_audio(video_path, output_audio_path):
     video = VideoFileClip(video_path)
     video.audio.write_audiofile(output_audio_path)
     print(f"Audio extracted to {output_audio_path}")
 
 # %%
-# Step 2: Split audio into chunks (60 seconds by default)
+""" Step 2: Split audio into chunks (60 seconds by default) """
 def split_audio(audio_path, chunk_duration_ms=60000):  # 60 seconds per chunk
     audio = AudioSegment.from_wav(audio_path)
     num_chunks = math.ceil(len(audio) / chunk_duration_ms)
@@ -30,30 +41,16 @@ def split_audio(audio_path, chunk_duration_ms=60000):  # 60 seconds per chunk
     return chunks
 
 # %%
+""" Step 3: Transcribe_audio"""
 def transcribe_audio(audio_path):
-    # Initialize recognizer
-    recognizer = sr.Recognizer()
-
-    # Load the audio file
-    with sr.AudioFile(audio_path) as audio_file:
-        # Listen to the audio file
-        audio_data = recognizer.record(audio_file)
+    with open(path, "rb") as audio_file:
+        transcription = client.audio.transcriptions.create(
+        model = "whisper-1", 
+        file = path)
+    return transcription
         
-        # Use the recognizer to transcribe the audio
-        try:
-            transcription = recognizer.recognize_sphinx(audio_data)
-            print("Transcription complete:")
-            return transcription
-        except sr.UnknownValueError:
-            print("Sorry, I couldn't understand the audio.")
-            return ""
-        except sr.RequestError as e:
-            print(f"Sphinx request failed; {e}")
-            return ""
-
-
 # %%
-# Step 4: Generate SRT subtitles (for each chunk)
+""" Step 4: Generate SRT subtitles (for each chunk) """
 def generate_srt(transcriptions, output_srt_path):
     with open(output_srt_path, "w") as srt_file:
         start_time = 0  # Start timestamp for the first chunk
@@ -90,19 +87,21 @@ audio_path = "Video/extracted_audio.wav"
 srt_path = "Video/output_subtitles.srt"
 
 # %%
-extract_audio(video_path, output_audio_path)
+#extract_audio(video_path, output_audio_path)
 
 # %%
-audio_chunks = split_audio(audio_path)
+#audio_chunks = split_audio(audio_path)
 
 # %%
-# Transcribe each audio chunk using Sphinx
+# Transcribe each audio chunk 
 transcriptions = []
-for chunk in audio_chunks:
-    transcription = transcribe_audio(chunk)
+for i in range(40,45):
+    path = Path(f"././chunks/chunk_{i}.wav")
+    transcription = transcribe_audio(path)
     if transcription:
         transcriptions.append(transcription)
 
 # %%
 generate_srt(transcriptions, srt_path)
+
 
